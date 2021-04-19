@@ -1,10 +1,10 @@
 # Fdb version 3
-["xdvipdfmx"] 1618755053 "hw8_deepLearning1.xdv" "hw8_deepLearning1.pdf" "hw8_deepLearning1" 1618755054
-  "hw8_deepLearning1.xdv" 1618755053 4976 32663289326e34b1e6164dcd77c82313 "xelatex"
+["xdvipdfmx"] 1618810926 "project1-report.xdv" "project1-report.pdf" "project1-report" 1618810959
+  "project1-report.xdv" 1618810926 4976 eccd40d016eb72040b141b1255007fa6 "xelatex"
   (generated)
-  "hw8_deepLearning1.pdf"
-["xelatex"] 1618755052 "hw8_deepLearning1.tex" "hw8_deepLearning1.xdv" "hw8_deepLearning1" 1618755054
-  "/dev/null" 1618755051 0 d41d8cd98f00b204e9800998ecf8427e ""
+  "project1-report.pdf"
+["xelatex"] 1618810925 "project1-report.tex" "project1-report.xdv" "project1-report" 1618810959
+  "/dev/null" 1618810959 0 d41d8cd98f00b204e9800998ecf8427e ""
   "/usr/local/texlive/2020/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2020/texmf-dist/fonts/tfm/adobe/zapfding/pzdr.tfm" 1136768653 1528 f853c4d1b4e0550255e02831fdc8496f ""
   "/usr/local/texlive/2020/texmf-dist/fonts/tfm/public/latex-fonts/lasy6.tfm" 1136768653 520 4889cce2180234b97cad636b6039c722 ""
@@ -94,11 +94,11 @@
   "/usr/local/texlive/2020/texmf-dist/web2c/texmf.cnf" 1583102494 39451 60d7debd9ef8ece44cbe965493576c2d ""
   "/usr/local/texlive/2020/texmf-var/web2c/xetex/xelatex.fmt" 1600668926 4769645 97e2826ae15f5a2b5a519b230440e328 ""
   "/usr/local/texlive/2020/texmf.cnf" 1586288231 577 d60164b4589a341208aff7a667fbbdcb ""
-  "hw8_deepLearning1.aux" 1618755053 628 8e762e3fa6240f6f8fe2e9db6cd33e0e "xelatex"
-  "hw8_deepLearning1.out" 1618755053 0 d41d8cd98f00b204e9800998ecf8427e "xelatex"
-  "hw8_deepLearning1.tex" 1618755051 2200 d336c71f15f42b7e17e6ee01b34fceae ""
+  "project1-report.aux" 1618810926 628 8e762e3fa6240f6f8fe2e9db6cd33e0e "xelatex"
+  "project1-report.out" 1618810926 0 d41d8cd98f00b204e9800998ecf8427e "xelatex"
+  "project1-report.tex" 1618755060 2199 db447414ff5baaae91d59901bb4cb844 ""
   (generated)
-  "hw8_deepLearning1.aux"
-  "hw8_deepLearning1.xdv"
-  "hw8_deepLearning1.log"
-  "hw8_deepLearning1.out"
+  "project1-report.log"
+  "project1-report.xdv"
+  "project1-report.out"
+  "project1-report.aux"
