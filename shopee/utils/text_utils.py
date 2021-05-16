@@ -21,7 +21,6 @@ def preprocess_title(title):
     tokens_title = title.strip().split()
     # Remove stopwords
     tokens_title = [word for word in tokens_title if not word in stopwords.words()]
-    prepped_title = ' '.join(tokens_title)
     # Lemmatization
     lemmatizer = WordNetLemmatizer()
     lemm_text = [lemmatizer.lemmatize(word) for word in tokens_title]

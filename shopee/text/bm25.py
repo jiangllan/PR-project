@@ -14,8 +14,7 @@ class BM25(object):
         self.model = bm25.BM25(corpus)
         self.idf = sum(map(lambda k: float(self.model.idf[k]), self.model.idf.keys())) / len(self.model.idf.keys()) if idf is None else idf
 
-    def search(self, query, top_n=10):
+    def search(self, query):
         tok_query = query.strip().split()
         scores = self.model.get_scores(tok_query)
-        result_inds = np.argpartition(scores, -top_n)[-top_n:]
-        return result_inds
+        return np.array(scores)

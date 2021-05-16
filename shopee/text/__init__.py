@@ -4,4 +4,4 @@
 # @Author  : Lan Jiang
 # @File    : __init__.py.py
 
-from .bm25 import BM25
+from bm25 import BM25
