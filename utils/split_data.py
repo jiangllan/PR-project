@@ -23,10 +23,14 @@ def split_train_and_test(args):
 
     split = 1
     for train_idx, test_idx in gss.split(data, groups=data['label_group'].tolist()):
-        train, test = data.iloc[train_idx, :], data.iloc[test_idx, :]
-        print("Split %d: train %d test %d" % (split, len(train), len(test)))
+        train, dev_and_test = data.iloc[train_idx, :], data.iloc[test_idx, :]
+        # split dev from test
+        dev = dev_and_test.sample(frac=0.5, random_state=42)
+        test = dev_and_test.drop(dev.index)
+        print("Split %d: train %d test %d dev %d" % (split, len(train), len(test), len(dev)))
         train.to_csv(os.path.join(args.save_dir, "train_split_%d.csv" % split), index=False)
         test.to_csv(os.path.join(args.save_dir, "test_split_%d.csv" % split), index=False)
+        dev.to_csv(os.path.join(args.save_dir, "dev_split_%d.csv" % split), index=False)
         split += 1
 
     print("Split and save %d-fold train&test data over." % (split-1))
@@ -37,7 +41,8 @@ def main():
     parser.add_argument("--data_dir", type=str)
     parser.add_argument("--save_dir", type=str)
     parser.add_argument("--n_splits", type=int, default=5)
-    parser.add_argument("--train_size", type=float, default=0.85, help="Should be between 0 and 1.")
+    parser.add_argument("--train_size", type=float, default=0.8, help="Should be between 0 and 1.")
+    parser.add_argument("--dev_size", type=float, default=0.1, help="Should be between 0 and 1.")
     args = parser.parse_args()
 
     split_train_and_test(args)
