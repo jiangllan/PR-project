@@ -5,6 +5,7 @@
 # @File    : text_utils.py
 
 import pandas as pd
+import numpy as np
 import os
 import pickle
 import string
@@ -54,3 +55,20 @@ def load_corpus(args):
             corpus = pickle.load(f)
         print("load over.")
     return corpus
+
+
+def load_features(args, split, fold):
+    file_name = "%s_split_%d" % (split, fold)
+    with open(os.path.join(args.data_dir, args.model_name, "%s_features.pickle" % file_name), "rb") as f:
+        features = pickle.load(f)
+
+    data = pd.read_csv(os.path.join(args.data_dir, "%s.csv" % file_name))
+    labels = data['label_group'].to_numpy()
+    features = np.array(features)
+    return features, labels
+
+
+def load_data(args, split, fold):
+    file_name = "%s_split_%d" % (split, fold)
+    data = pd.read_csv(os.path.join(args.data_dir, "%s.csv" % file_name))
+    return data

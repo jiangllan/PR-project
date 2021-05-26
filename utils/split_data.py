@@ -12,7 +12,7 @@ import argparse
 
 
 def split_train_and_test(args):
-    data = pd.read_csv(os.path.join(args.data_dir, "train.csv"))
+    data = pd.read_csv(os.path.join(args.data_dir, "std_train.csv"))
     gss = GroupShuffleSplit(n_splits=args.n_splits if args.n_splits else 5,
                             train_size=args.train_size if args.train_size else 5,
                             random_state=42)
