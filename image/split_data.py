@@ -12,14 +12,15 @@ import pandas as pd
 from sklearn.model_selection import GroupShuffleSplit
 
 
-def split_datset(args):
+def split_same_group_sample_to_diff_set(args):
     original_data = pd.read_csv(os.path.join(args.data_dir, "train.csv"))
-    tmp = original_data.groupby('label_group').posting_id.agg('unique').to_dict()
-    original_data['target'] = original_data.label_group.map(tmp)
+    data = original_data.copy()
+    tmp = data.groupby('label_group').posting_id.agg('unique').to_dict()
+    data['target'] = data.label_group.map(tmp)
     train_idx, val_idx, test_idx = [], [], []
     split_group = []
-
-    data = original_data
+    print(original_data.iloc[0, :])
+    print(data.iloc[0, :])
 
     for cur_data_id in range(data.shape[0]):
         cur_data = data.iloc[cur_data_id, :]
@@ -35,7 +36,10 @@ def split_datset(args):
                 print('\t 6 <= group_sample_number = {} < 20'.format(group_sample_number))
                 index_list = [i for i in range(group_sample_number)]
                 random.Random(8).shuffle(index_list)
-                for j in range(len(cur_data.target)):
+                # tmp_train_target = []
+                # tmp_val_target = []
+                # tmp_test_target = []
+                for j in range(group_sample_number):
                     if j < 2:
                         val_idx.append(
                             data[data.posting_id == cur_data.target[index_list[j]]].index.tolist()[0])
@@ -66,7 +70,17 @@ def split_datset(args):
             print('{}-th data already processed'.format(cur_data_id))
 
     assert len(train_idx) + len(val_idx) + len(test_idx) == data.shape[0]
-    train, val, test = data.iloc[train_idx, :], data.iloc[val_idx, :], data.iloc[test_idx, :]
+    train, val, test = original_data.iloc[train_idx, :], original_data.iloc[val_idx, :], original_data.iloc[test_idx, :]
+
+    tmp = train.groupby('label_group').posting_id.agg('unique').to_dict()
+    train['target'] = train.label_group.map(tmp)
+
+    tmp = val.groupby('label_group').posting_id.agg('unique').to_dict()
+    val['target'] = val.label_group.map(tmp)
+
+    tmp = test.groupby('label_group').posting_id.agg('unique').to_dict()
+    test['target'] = test.label_group.map(tmp)
+
     print("train %d val %d test %d" % (len(train), len(val), len(test)))
     train.to_csv(os.path.join(args.save_dir, "new_train.csv"), index=False)
     val.to_csv(os.path.join(args.save_dir, "new_val.csv"), index=False)
@@ -108,7 +122,7 @@ def main():
     parser.add_argument("--dev_size", type=float, default=0.1, help="Should be between 0 and 1.")
     args = parser.parse_args()
 
-    split_datset(args)
+    split_same_group_sample_to_diff_set(args)
 
 
 if __name__ == "__main__":
