@@ -102,7 +102,8 @@ if __name__ == '__main__':
         if args.include_self:
             print("Include query itself")
         for split, data in zip(["train", "dev", "test"], [train, test, dev]):
-            # if split == "train": continue
+            if split == "train":
+                continue
             # eval on test
             corpus = [item.split() for item in data['std_title'].tolist()]
             bm25_model = BM25(corpus)
@@ -117,16 +118,15 @@ if __name__ == '__main__':
         total_result.append(fold_result)    # fold * split * metric
 
     total_result = np.array(total_result)
-    print("\nAverage performance of 5 folds")
-    print("\tF1\tmAP@10\tMRR")
-    for i, split in enumerate(["train", "dev", "test"]):
-        print("{} {:.4f} {:.4f} {:.4f}".format(
-            split,
-            np.mean(total_result[:, i, :], axis=0)[0],
-            np.mean(total_result[:, i, :], axis=0)[1],
-            np.mean(total_result[:, i, :], axis=0)[2]
-        ))
+    save_result = []
+    # print("\nAverage performance of 5 folds")
+    # print("\tF1\tmAP@10\tMRR")
+    for i, split in enumerate(["dev", "test"]):
+        orig = total_result[:, i, :]
+        orig = np.append(orig, [np.mean(total_result[:, i, :], axis=0)], axis=0)
+        orig = np.append([['1'], ['2'], ['3'], ['4'], ['5'], ['AVG']], orig, axis=1)
+        orig = np.append([["fold", "F1", "mAP@10", "MRR"]], orig, axis=0)
+        file_name = "bm25-%s-%s.txt" % (split, str(args.threshold))
+        np.savetxt(os.path.join(args.save_dir, file_name), orig, fmt='%s', delimiter=',')
 
-    # save result
-    # np.savetxt('result/bm25/top_10_index.out', top_inds_list, fmt='%s', delimiter=',')
-    # np.savetxt('result/bm25/thre_pred_list.out', thre_pred_list, fmt='%s', delimiter=',')
+    print("Over.")

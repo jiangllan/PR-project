@@ -4,6 +4,7 @@
 # @Author  : Lan Jiang
 # @File    : run_pca.py
 
+import os
 import sys
 
 sys.path.append("..")
@@ -81,6 +82,7 @@ def evaluate(query_list, label_list, corpus, args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_dir", type=str, default="../../Dataset/shopee-product-matching/split_data")
+    parser.add_argument("--save_dir", type=str, default="../../tmp/shopee/")
     parser.add_argument("--model_name", type=str, default="glove")
     parser.add_argument("--n_components", type=int, default=50)
     parser.add_argument('--whiten', action='store_true')
@@ -106,7 +108,7 @@ if __name__ == '__main__':
             print("Include query itself")
         for split, features, labels in zip(["train", "dev", "test"], [train_X, test_X, dev_X],
                                            [train_labels, test_labels, dev_labels]):
-            # if split == "train": continue
+            if split == "train": continue
             # eval on test
             print("=" * 9, "Evaluation on %s set" % split, "=" * 9)
             reduced_features = model.transform(features)
@@ -118,12 +120,15 @@ if __name__ == '__main__':
         total_result.append(fold_result)
 
     total_result = np.array(total_result)
-    print("\nAverage performance of 5 folds")
-    print("\tF1\tmAP@10\tMRR")
-    for i, split in enumerate(["train", "dev", "test"]):
-        print("{} {:.4f} {:.4f} {:.4f}".format(
-            split,
-            np.mean(total_result[:, i, :], axis=0)[0],
-            np.mean(total_result[:, i, :], axis=0)[1],
-            np.mean(total_result[:, i, :], axis=0)[2]
-        ))
+    save_result = []
+    # print("\nAverage performance of 5 folds")
+    # print("\tF1\tmAP@10\tMRR")
+    for i, split in enumerate(["dev", "test"]):
+        orig = total_result[:, i, :]
+        orig = np.append(orig, [np.mean(total_result[:, i, :], axis=0)], axis=0)
+        orig = np.append([['1'], ['2'], ['3'], ['4'], ['5'], ['AVG']], orig, axis=1)
+        orig = np.append([["fold", "F1", "mAP@10", "MRR"]], orig, axis=0)
+        file_name = "pca-%s-%s-%s-%d%s.txt" % (split, args.model_name, str(args.threshold), args.n_components, "-whiten" if args.whiten else "")
+        np.savetxt(os.path.join(args.save_dir, file_name), orig, fmt='%s', delimiter=',')
+
+    print("Over.")

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="208cfbdb-110b-4a77-aa95-8c476270ae8a" name="g06" url="http:///">
+        <fileTransfer host="166.111.5.185" port="65146" accessType="SFTP">
+          <option name="port" value="65146" />
+        </fileTransfer>
+      </webServer>
+      <webServer id="bb802d16-9e66-4d6a-b705-6b5ec51e0ac8" name="g01" url="http://159.226.47.242">
+        <fileTransfer host="159.226.47.242" port="65141" rootFolder="/home/jianglan" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+          <option name="port" value="65141" />
+        </fileTransfer>
+      </webServer>
+    </option>
+    <groups>
+      <group>
+        <name>g01+g06</name>
+        <servers>
+          <name value="g06" />
+          <name value="g01" />
+        </servers>
+      </group>
+    </groups>
+  </component>
+</project>

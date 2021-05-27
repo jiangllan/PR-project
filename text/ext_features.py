@@ -41,16 +41,20 @@ if __name__ == "__main__":
     parser.add_argument("--cache_dir", type=str, default="../../Dataset/shopee-product-matching/aux_files")
     parser.add_argument("--model_name", type=str, default="xlm-r-100langs-bert-base-nli-stsb-mean-tokens")
     parser.add_argument("--pool", type=str, default="max")
-    parser.add_argument("--method", type=str, default="bert")
     args = parser.parse_args()
 
+    methodAbbr = {
+        "sentence-transformers/xlm-r-100langs-bert-base-nli-stsb-mean-tokens": "xlm-100",
+        "sentence-transformers/stsb-xlm-r-multilingual": "xlm-multi",
+        "cahya/distilbert-base-indonesian": "indo",
+        "glove-%s" % args.pool: "glove-%s" % args.pool
+    }
+
     # load model
-    if args.method == "bert":
-        model = SentenceTransformer(args.model_name)
-    elif args.method == "glove":
+    if args.model_name == "glove":
         model = GloveEncoder(args)
     else:
-        model = None
+        model = SentenceTransformer(args.model_name)
     print("load model over.")
 
     for i in range(5):
@@ -58,17 +62,20 @@ if __name__ == "__main__":
             file_name = "%s_split_%d" % (split, i + 1)
             data = pd.read_csv(os.path.join(args.data_dir, "%s.csv" % file_name))
             titles = data['std_title'].tolist()
-            titles_embeddings = None
-            for j, item in enumerate(titles):
-                try:
-                    assert (isinstance(item, str))
-                except AssertionError:
-                    print(j, " ", item)
-
+            # for j, item in enumerate(titles):
+            #     try:
+            #         assert (isinstance(item, str))
+            #     except AssertionError:
+            #         print(j, " ", item)
             titles_embeddings = model.encode(titles)
 
             # save to cache files
-            with open(os.path.join(args.data_dir, args.method, "%s_features.pickle" % file_name), "wb") as f:
+            if args.model_name == "glove":
+                save_model_name = "%s-%s" % (args.model_name, args.pool)
+            else:
+                save_model_name = args.model_name
+
+            with open(os.path.join(args.data_dir, methodAbbr[save_model_name], "%s_features.pickle" % file_name), "wb") as f:
                 pickle.dump(titles_embeddings, f)
             print("save %s embeddings produced by %s over." % (file_name, args.model_name))
 

@@ -5,6 +5,7 @@
 # @File    : run_bert.py
 
 import sys
+import os
 sys.path.append("..")
 
 import pickle
@@ -78,18 +79,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_dir", type=str, default="../../Dataset/shopee-product-matching/split_data")
     parser.add_argument("--model_name", type=str, default="bert")
-    parser.add_argument('--whiten', action='store_true')
     parser.add_argument("--threshold", type=float, default=0.8)
     parser.add_argument('--include_self', action='store_true')
     parser.add_argument("--top_n", type=int, default="10")
 
     args = parser.parse_args()
 
-    mAP_list, mrr_list, f1_list = [], [], []
+    total_result = []
     for fold in range(1, 6):
         train_X, train_labels = load_features(args, "train", fold)
         test_X, test_labels = load_features(args, "test", fold)
         dev_X, dev_labels = load_features(args, "dev", fold)
+        fold_result = []  # split * metric
         print("load data over.")
 
         # evaluate
@@ -97,8 +98,26 @@ if __name__ == '__main__':
             print("Include query itself")
         for split, features, labels in zip(["train", "dev", "test"], [train_X, test_X, dev_X],
                                            [train_labels, test_labels, dev_labels]):
-            # if split == "train": continue
+            if split == "train":
+                continue
             # eval on test
             print("=" * 9, "Evaluation on %s set" % split, "=" * 9)
             mAP, mrr, F1 = evaluate(features, labels, features, args)
             print("F1: {} mAP@10: {} MRR: {}".format(F1, mAP, mrr))
+            fold_result.append([F1, mAP, mrr])
+
+        total_result.append(fold_result)  # fold * split * metric
+
+    total_result = np.array(total_result)
+    save_result = []
+    # print("\nAverage performance of 5 folds")
+    # print("\tF1\tmAP@10\tMRR")
+    for i, split in enumerate(["dev", "test"]):
+        orig = total_result[:, i, :]
+        orig = np.append(orig, [np.mean(total_result[:, i, :], axis=0)], axis=0)
+        orig = np.append([['1'], ['2'], ['3'], ['4'], ['5'], ['AVG']], orig, axis=1)
+        orig = np.append([["fold", "F1", "mAP@10", "MRR"]], orig, axis=0)
+        file_name = "bert-%s-%s-%s.txt" % (split, str(args.threshold), args.model_name)
+        np.savetxt(os.path.join(args.save_dir, file_name), orig, fmt='%s', delimiter=',')
+
+    print("Over.")
