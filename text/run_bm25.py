@@ -17,6 +17,7 @@ from utils.metrics import mean_average_precision, mean_reciprocal_rank
 from sklearn.metrics import f1_score, accuracy_score
 import progressbar
 from gensim.summarization import bm25
+import random
 
 
 class BM25(object):
@@ -33,9 +34,10 @@ class BM25(object):
 
 def evaluate_iter(title, bm25_model, args):
     # top_n
-    pre_title = preprocess_title(title)
-    scores = bm25_model.search(pre_title)
+    # pre_title = preprocess_title(title)
+    scores = bm25_model.search(title)
     top_inds = np.argsort(scores)[-args.top_n - 1:][::-1]
+    top_inds = top_inds[scores[top_inds] > args.threshold]
 
     # F1
     thresh_preds = 1 * (scores > args.threshold)
@@ -43,7 +45,7 @@ def evaluate_iter(title, bm25_model, args):
     return top_inds, thresh_preds
 
 
-def evaluate(query_list, label_list, bm25_model, args):
+def evaluate(query_list, label_list, bm25_model, corpus_label_list, args):
     top_pred_list = []
     top_inds_list = []
     thre_pred_list = []
@@ -52,21 +54,21 @@ def evaluate(query_list, label_list, bm25_model, args):
     for i in p(range(len(query_list))):
         query, label = query_list[i], label_list[i]
         top_inds, thresh_preds = evaluate_iter(query, bm25_model, args)
-        ground_true = 1 * (label_list == label)
-        if not args.include_self:
-            # remove query itself from the corpus
-            thresh_preds = np.delete(thresh_preds, i)
-            ground_true = np.delete(ground_true, i)
-            top_inds = top_inds[top_inds != i]
+        ground_true = 1 * (corpus_label_list == label)
+        # if not args.include_self:
+        #     # remove query itself from the corpus
+        #     thresh_preds = np.delete(thresh_preds, ind)
+        #     ground_true = np.delete(ground_true, ind)
+        #     top_inds = top_inds[top_inds != ind]
         try:
             assert (len(top_inds) == 10)
         except AssertionError:
             top_inds = top_inds[:10]
 
-        # print("ground_true: ", ground_true)
-        # print("thresh_preds: ", thresh_preds)
+        # print("ground_true: ", ground_true.shape)
+        # print("thresh_preds: ", thresh_preds.shape)
         f1 = f1_score(ground_true, thresh_preds)
-        top_labels = label_list[top_inds]
+        top_labels = corpus_label_list[top_inds]
         rs = 1 * (top_labels == label)
 
         top_pred_list.append(rs)
@@ -87,46 +89,38 @@ if __name__ == '__main__':
     parser.add_argument("--data_dir", type=str, default="../../Dataset/shopee-product-matching/split_data")
     parser.add_argument("--cache_dir", type=str, default="../../Dataset/shopee-product-matching/aux_files")
     parser.add_argument("--threshold", type=int, default="20")
-    parser.add_argument("--top_n", type=int, default="10")
+    parser.add_argument("--save_dir", type=str, default="../../tmp/shopee/")
+    parser.add_argument("--top_n", type=int, default=10)
     parser.add_argument('--include_self', action='store_true')
     args = parser.parse_args()
 
-    total_result = []
-    for fold in range(1, 6):
-        train = load_data(args, "train", fold)
-        test = load_data(args, "test", fold)
-        dev = load_data(args, "dev", fold)
-        fold_result = []    # split * metric
+    train = load_data(args, "train")
+    corpus = [title.split() for title in train['std_title'].tolist()]
+    corpus_label_list = train['label_group'].to_numpy()
+    bm25_model = BM25(corpus)
+    print("Build BM25 model over.")
+    test = load_data(args, "test")
+    query_list = test['std_title'].to_numpy()
+    label_list = test['label_group'].to_numpy()
 
-        # evaluate
-        if args.include_self:
-            print("Include query itself")
-        for split, data in zip(["train", "dev", "test"], [train, test, dev]):
-            if split == "train":
-                continue
-            # eval on test
-            corpus = [item.split() for item in data['std_title'].tolist()]
-            bm25_model = BM25(corpus)
-            print("=" * 9, "Evaluation on %s set" % split, "=" * 9)
-            query_list = data['std_title'].to_numpy()
-            label_list = data['label_group'].to_numpy()
-            # reduced_features = features
-            mAP, mrr, F1 = evaluate(query_list, label_list, bm25_model, args)
-            print("F1: {} mAP@10: {} MRR: {}".format(F1, mAP, mrr))
-            fold_result.append([F1, mAP, mrr])
+    # evaluate
+    print("=" * 9, "Evaluation", "=" * 9)
+    mAP, mrr, F1 = evaluate(query_list, label_list, bm25_model, corpus_label_list, args)
+    print("F1: {:.4f} mAP@10: {:.4f} MRR: {:.4f}".format(F1, mAP, mrr))
 
-        total_result.append(fold_result)    # fold * split * metric
+    total_result = np.array([F1, mAP, mrr])
+    save_result = np.append(["F1", "mAP@10", "MRR"], total_result, axis=0)
+    file_name = "bm25-%s.txt" % str(args.threshold)
+    np.savetxt(os.path.join(args.save_dir, file_name), save_result, fmt='%s', delimiter=',')
 
-    total_result = np.array(total_result)
-    save_result = []
-    # print("\nAverage performance of 5 folds")
-    # print("\tF1\tmAP@10\tMRR")
-    for i, split in enumerate(["dev", "test"]):
-        orig = total_result[:, i, :]
-        orig = np.append(orig, [np.mean(total_result[:, i, :], axis=0)], axis=0)
-        orig = np.append([['1'], ['2'], ['3'], ['4'], ['5'], ['AVG']], orig, axis=1)
-        orig = np.append([["fold", "F1", "mAP@10", "MRR"]], orig, axis=0)
-        file_name = "bm25-%s-%s.txt" % (split, str(args.threshold))
-        np.savetxt(os.path.join(args.save_dir, file_name), orig, fmt='%s', delimiter=',')
+    # # print("\nAverage performance of 5 folds")
+    # # print("\tF1\tmAP@10\tMRR")
+    # for i, split in enumerate(["dev", "test"]):
+    #     orig = total_result[:, :, i, :]
+    #     orig = np.append(orig, [np.mean(total_result[:, i, :], axis=0)], axis=0)
+    #     orig = np.append([['1'], ['2'], ['3'], ['4'], ['5'], ['AVG']], orig, axis=1)
+    #
+    #     file_name = "bm25-%s-%s.txt" % (split, str(args.threshold))
+    #     np.savetxt(os.path.join(args.save_dir, file_name), orig, fmt='%s', delimiter=',')
 
     print("Over.")

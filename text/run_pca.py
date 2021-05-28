@@ -15,7 +15,6 @@ from utils.metrics import mean_average_precision, mean_reciprocal_rank
 from sklearn.decomposition import PCA
 import numpy as np
 import argparse
-import torch
 import progressbar
 
 
@@ -28,7 +27,7 @@ def train(features, args):
 
 def evaluate_iter(cos_scores, args):
     # top_n
-    top_inds = np.argsort(cos_scores)[-args.top_n-1:][::-1]
+    top_inds = np.argsort(cos_scores)[-args.top_n - 1:][::-1]
     top_inds = top_inds[cos_scores[top_inds] > args.threshold]
 
     # F1
@@ -88,47 +87,41 @@ if __name__ == '__main__':
     parser.add_argument('--whiten', action='store_true')
     parser.add_argument('--include_self', action='store_true')
     parser.add_argument("--top_n", type=int, default="10")
-    parser.add_argument("--threshold", type=float, default=0.95)
+    parser.add_argument("--threshold", type=float, default=0.85)
     args = parser.parse_args()
 
     # load features
-    total_result = []
-    for fold in range(1, 6):
-        train_X, train_labels = load_features(args, "train", fold)
-        test_X, test_labels = load_features(args, "test", fold)
-        dev_X, dev_labels = load_features(args, "dev", fold)
-        fold_result = []
+    train_X, train_labels = load_features(args, "train")
+    test_X, test_labels = load_features(args, "test")
+    dev_X, dev_labels = load_features(args, "val")
 
-        # train
-        model = train(train_X, args)
-        print("train model over.")
+    # train
+    model = train(train_X, args)
+    print("train model over.")
 
-        # evaluate
-        if args.include_self:
-            print("Include query itself")
-        for split, features, labels in zip(["train", "dev", "test"], [train_X, test_X, dev_X],
-                                           [train_labels, test_labels, dev_labels]):
-            if split == "train": continue
-            # eval on test
-            print("=" * 9, "Evaluation on %s set" % split, "=" * 9)
-            reduced_features = model.transform(features)
-            # reduced_features = features
-            mAP, mrr, F1 = evaluate(reduced_features, labels, reduced_features, args)
-            print("F1: {} mAP@10: {} MRR: {}".format(F1, mAP, mrr))
-            fold_result.append([F1, mAP, mrr])
+    # evaluate
+    if args.include_self:
+        print("Include query itself")
 
-        total_result.append(fold_result)
+    reduced_features = model.transform(test_X)
+    # reduced_features = features
+    mAP, mrr, F1 = evaluate(reduced_features, test_labels, reduced_features, args)
+    print("=" * 9, "Evaluation on test set", "=" * 9)
+    print("F1: {:.4f} mAP@10: {:.4f} MRR: {:.4f}".format(F1, mAP, mrr))
 
-    total_result = np.array(total_result)
-    save_result = []
-    # print("\nAverage performance of 5 folds")
-    # print("\tF1\tmAP@10\tMRR")
-    for i, split in enumerate(["dev", "test"]):
-        orig = total_result[:, i, :]
-        orig = np.append(orig, [np.mean(total_result[:, i, :], axis=0)], axis=0)
-        orig = np.append([['1'], ['2'], ['3'], ['4'], ['5'], ['AVG']], orig, axis=1)
-        orig = np.append([["fold", "F1", "mAP@10", "MRR"]], orig, axis=0)
-        file_name = "pca-%s-%s-%s-%d%s.txt" % (split, args.model_name, str(args.threshold), args.n_components, "-whiten" if args.whiten else "")
-        np.savetxt(os.path.join(args.save_dir, file_name), orig, fmt='%s', delimiter=',')
+    total_result = np.array([F1, mAP, mrr])
+    save_result = np.append(["F1", "mAP@10", "MRR"], total_result, axis=0)
+    file_name = "pca-%s-%d%s.txt" % (str(args.threshold), args.n_components, "-whiten" if args.whiten else "")
+    np.savetxt(os.path.join(args.save_dir, file_name), save_result, fmt='%s', delimiter=',')
+    # save_result = []
+    # # print("\nAverage performance of 5 folds")
+    # # print("\tF1\tmAP@10\tMRR")
+    # for i, split in enumerate(["dev", "test"]):
+    #     orig = total_result[:, i, :]
+    #     orig = np.append(orig, [np.mean(total_result[:, i, :], axis=0)], axis=0)
+    #     orig = np.append([['1'], ['2'], ['3'], ['4'], ['5'], ['AVG']], orig, axis=1)
+    #     orig = np.append([["fold", "F1", "mAP@10", "MRR"]], orig, axis=0)
+    #     file_name = "pca-%s-%s-%s-%d%s.txt" % (split, args.model_name, str(args.threshold), args.n_components, "-whiten" if args.whiten else "")
+    #     np.savetxt(os.path.join(args.save_dir, file_name), orig, fmt='%s', delimiter=',')
 
     print("Over.")

@@ -12,6 +12,7 @@ import string
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
 import progressbar
+from sentence_transformers.readers import InputExample
 
 
 def preprocess_title(title):
@@ -57,9 +58,9 @@ def load_corpus(args):
     return corpus
 
 
-def load_features(args, split, fold):
-    file_name = "%s_split_%d" % (split, fold)
-    with open(os.path.join(args.data_dir, args.model_name, "%s_features.pickle" % file_name), "rb") as f:
+def load_features(args, split):
+    file_name = "new_%s" % split
+    with open(os.path.join(args.model_dir, args.model_name, "%s_features.pickle" % file_name), "rb") as f:
         features = pickle.load(f)
 
     data = pd.read_csv(os.path.join(args.data_dir, "%s.csv" % file_name))
@@ -68,7 +69,17 @@ def load_features(args, split, fold):
     return features, labels
 
 
-def load_data(args, split, fold):
-    file_name = "%s_split_%d" % (split, fold)
+def load_data(args, split):
+    file_name = "new_%s" % split
     data = pd.read_csv(os.path.join(args.data_dir, "%s.csv" % file_name))
     return data
+
+
+def load_pairwise_data(args, split):
+    data = pd.read_csv(os.path.join(args.data_dir, "pairwise_pos_%s.csv" % split))
+    train_samples = []
+    for index, row in data.iterrows():
+        train_samples.append(InputExample(texts=[row['title_1'], row['title_2']], label=1))
+        train_samples.append(InputExample(texts=[row['title_2'], row['title_1']], label=1))
+
+    return train_samples
