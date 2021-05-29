@@ -4,23 +4,24 @@
 # @Author  : Lan Jiang
 # @File    : run_bert.py
 
-import sys
 import os
+import sys
+
 sys.path.append("..")
 
-import pickle
-import pandas as pd
 import numpy as np
 from utils.text_utils import load_features, load_pairwise_data
 import argparse
 from utils.metrics import mean_average_precision, mean_reciprocal_rank
 from sklearn.metrics import f1_score
-from sentence_transformers import SentenceTransformer, util, SentencesDataset, losses, evaluation
+from sentence_transformers import SentenceTransformer, util, losses, evaluation
 import progressbar
 import torch
+import pickle
 from torch.utils.data import DataLoader
 import logging
 import math
+import time
 
 
 def train(model, args):
@@ -58,7 +59,7 @@ def train(model, args):
 def evaluate_iter(query, corpus, args):
     # top_n
     cos_scores = util.pytorch_cos_sim(query, corpus)[0]
-    top_inds = torch.topk(cos_scores, k=args.top_n+1)[1].numpy()
+    top_inds = torch.topk(cos_scores, k=args.top_n + 1)[1].numpy()
     # top_inds = np.argsort(cos_scores)[-args.top_n-1:][::-1]
     cos_scores = cos_scores.numpy()
     top_inds = top_inds[cos_scores[top_inds] > args.threshold]
@@ -76,6 +77,7 @@ def evaluate(query_list, label_list, corpus, args):
     thre_pred_list = []
     f1_score_list = []
     p = progressbar.ProgressBar()
+    start = time.time()
     for i in p(range(len(query_list))):
         query, label = query_list[i], label_list[i]
         top_inds, thresh_preds = evaluate_iter(query, corpus, args)
@@ -89,13 +91,9 @@ def evaluate(query_list, label_list, corpus, args):
             assert (len(top_inds) == 10)
         except AssertionError:
             top_inds = top_inds[:10]
-        # print(top_inds)
 
-        # print(ground_true[:20], thresh_preds[:20])
         f1 = f1_score(ground_true, thresh_preds)
         top_labels = label_list[top_inds]
-        # print(label)
-        # print(top_labels)
         rs = 1 * (top_labels == label)
 
         top_pred_list.append(rs)
@@ -103,9 +101,17 @@ def evaluate(query_list, label_list, corpus, args):
         f1_score_list.append(f1)
         thre_pred_list.append(thresh_preds)
 
+    duration = time.time() - start
+    print("Execution time: {:.2f}ms".format(duration * 1000 / len(query_list)))
     mAP = mean_average_precision(top_pred_list)
     mrr = mean_reciprocal_rank(top_pred_list)
     total_f1 = np.mean(f1_score_list)
+
+    if args.save_result:
+        save_file_name = "bert_pred%s.pickle" % ("_include_self" if args.include_self else "")
+        with open(os.path.join(args.save_dir, save_file_name), "wb") as f:
+            pickle.dump(thre_pred_list, f)
+        print("save bert prediction result over.")
 
     return mAP, mrr, total_f1
 
@@ -120,6 +126,7 @@ if __name__ == '__main__':
     parser.add_argument('--include_self', action='store_true')
     parser.add_argument('--do_train', action='store_true')
     parser.add_argument('--do_eval', action='store_true')
+    parser.add_argument('--save_result', action='store_true')
     parser.add_argument("--top_n", type=int, default="10")
     parser.add_argument("--save_dir", type=str, default="../../tmp/shopee/")
     parser.add_argument("--train_batch_size", type=int, default=32)
@@ -135,25 +142,25 @@ if __name__ == '__main__':
         test_X, test_labels = load_features(args, "test")
         print("load data over.")
         # evaluate
-        if args.include_self:
-            print("Include query itself")
-        print("=" * 9, "Evaluation on test set", "=" * 9)
         mAP, mrr, F1 = evaluate(test_X, test_labels, test_X, args)
-        print("F1: {:.4f} mAP@10: {:.4f} MRR: {:.4f}".format(F1, mAP, mrr))
+        # args.include_self = True
+        # _mAP, _mrr, _F1 = evaluate(test_X, test_labels, test_X, args)
+        # print("=" * 9, "Evaluation on test set", "=" * 9)
+        # print("& {:.4f} & {:.4f} & {:.4f} & {:.4f} & {:.4f} & {:.4f}".format(_F1, _mAP, _mrr, F1, mAP, mrr))
 
-        total_result = np.array([F1, mAP, mrr])
-        save_result = np.append(["F1", "mAP@10", "MRR"], total_result, axis=0)
-        file_name = "bert-%s-%s.txt" % (str(args.threshold), args.model_name)
-        np.savetxt(os.path.join(args.save_dir, file_name), save_result, fmt='%s', delimiter=',')
-    # save_result = []
-    # # print("\nAverage performance of 5 folds")
-    # # print("\tF1\tmAP@10\tMRR")
-    # for i, split in enumerate(["dev", "test"]):
-    #     orig = total_result[:, i, :]
-    #     orig = np.append(orig, [np.mean(total_result[:, i, :], axis=0)], axis=0)
-    #     orig = np.append([['1'], ['2'], ['3'], ['4'], ['5'], ['AVG']], orig, axis=1)
-    #     orig = np.append([["fold", "F1", "mAP@10", "MRR"]], orig, axis=0)
-    #     file_name = "bert-%s-%s-%s.txt" % (split, str(args.threshold), args.model_name)
-    #     np.savetxt(os.path.join(args.save_dir, file_name), orig, fmt='%s', delimiter=',')
+        # total_result = np.array([F1, mAP, mrr])
+        # save_result = np.append(["F1", "mAP@10", "MRR"], total_result, axis=0)
+        # file_name = "bert-%s-%s.txt" % (str(args.threshold), args.model_name)
+        # np.savetxt(os.path.join(args.save_dir, file_name), save_result, fmt='%s', delimiter=',')
+        # save_result = []
+        # # print("\nAverage performance of 5 folds")
+        # # print("\tF1\tmAP@10\tMRR")
+        # for i, split in enumerate(["dev", "test"]):
+        #     orig = total_result[:, i, :]
+        #     orig = np.append(orig, [np.mean(total_result[:, i, :], axis=0)], axis=0)
+        #     orig = np.append([['1'], ['2'], ['3'], ['4'], ['5'], ['AVG']], orig, axis=1)
+        #     orig = np.append([["fold", "F1", "mAP@10", "MRR"]], orig, axis=0)
+        #     file_name = "bert-%s-%s-%s.txt" % (split, str(args.threshold), args.model_name)
+        #     np.savetxt(os.path.join(args.save_dir, file_name), orig, fmt='%s', delimiter=',')
 
         print("Over.")

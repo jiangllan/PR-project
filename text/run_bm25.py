@@ -10,21 +10,22 @@ import sys
 sys.path.append("..")
 # print(sys.path)
 import argparse
-from utils.text_utils import load_corpus, preprocess_title, load_data
-import pandas as pd
+from utils.text_utils import load_data
 import numpy as np
 from utils.metrics import mean_average_precision, mean_reciprocal_rank
-from sklearn.metrics import f1_score, accuracy_score
+from sklearn.metrics import f1_score
 import progressbar
 from gensim.summarization import bm25
-import random
+import pickle
+import time
 
 
 class BM25(object):
     def __init__(self, corpus, idf=None):
         self.corpus = corpus
         self.model = bm25.BM25(corpus)
-        self.idf = sum(map(lambda k: float(self.model.idf[k]), self.model.idf.keys())) / len(self.model.idf.keys()) if idf is None else idf
+        self.idf = sum(map(lambda k: float(self.model.idf[k]), self.model.idf.keys())) / len(
+            self.model.idf.keys()) if idf is None else idf
 
     def search(self, query):
         tok_query = query.strip().split()
@@ -51,22 +52,21 @@ def evaluate(query_list, label_list, bm25_model, corpus_label_list, args):
     thre_pred_list = []
     f1_score_list = []
     p = progressbar.ProgressBar()
+    start = time.time()
     for i in p(range(len(query_list))):
         query, label = query_list[i], label_list[i]
         top_inds, thresh_preds = evaluate_iter(query, bm25_model, args)
         ground_true = 1 * (corpus_label_list == label)
-        # if not args.include_self:
-        #     # remove query itself from the corpus
-        #     thresh_preds = np.delete(thresh_preds, ind)
-        #     ground_true = np.delete(ground_true, ind)
-        #     top_inds = top_inds[top_inds != ind]
+        if not args.include_self:
+            # remove query itself from the corpus
+            thresh_preds = np.delete(thresh_preds, i)
+            ground_true = np.delete(ground_true, i)
+            top_inds = top_inds[top_inds != i]
         try:
             assert (len(top_inds) == 10)
         except AssertionError:
             top_inds = top_inds[:10]
 
-        # print("ground_true: ", ground_true.shape)
-        # print("thresh_preds: ", thresh_preds.shape)
         f1 = f1_score(ground_true, thresh_preds)
         top_labels = corpus_label_list[top_inds]
         rs = 1 * (top_labels == label)
@@ -76,9 +76,17 @@ def evaluate(query_list, label_list, bm25_model, corpus_label_list, args):
         f1_score_list.append(f1)
         thre_pred_list.append(thresh_preds)
 
+    duration = time.time() - start
+    print("Execution time: {:.2f}ms".format(duration * 1000 / len(query_list)))
     mAP = mean_average_precision(top_pred_list)
     mrr = mean_reciprocal_rank(top_pred_list)
     total_f1 = np.mean(f1_score_list)
+
+    if args.save_result:
+        save_file_name = "bm25_pred%s.pickle" % ("_include_self" if args.include_self else "")
+        with open(os.path.join(args.save_dir, save_file_name), "wb") as f:
+            pickle.dump(thre_pred_list, f)
+        print("save bm25 prediction result over.")
 
     return mAP, mrr, total_f1
 
@@ -92,11 +100,16 @@ if __name__ == '__main__':
     parser.add_argument("--save_dir", type=str, default="../../tmp/shopee/")
     parser.add_argument("--top_n", type=int, default=10)
     parser.add_argument('--include_self', action='store_true')
+    parser.add_argument('--save_result', action='store_true')
     args = parser.parse_args()
 
-    train = load_data(args, "train")
-    corpus = [title.split() for title in train['std_title'].tolist()]
-    corpus_label_list = train['label_group'].to_numpy()
+    if args.include_self:
+        data = load_data(args, "test")
+    else:
+        data = load_data(args, "train")
+
+    corpus = [title.split() for title in data['std_title'].tolist()]
+    corpus_label_list = data['label_group'].to_numpy()
     bm25_model = BM25(corpus)
     print("Build BM25 model over.")
     test = load_data(args, "test")

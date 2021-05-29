@@ -16,6 +16,8 @@ from sklearn.decomposition import PCA
 import numpy as np
 import argparse
 import progressbar
+import pickle
+import time
 
 
 def train(features, args):
@@ -44,6 +46,7 @@ def evaluate(query_list, label_list, corpus, args):
     f1_score_list = []
     cos_scores_matrix = cosine_similarity(corpus)
     p = progressbar.ProgressBar()
+    start = time.time()
     for i in p(range(len(query_list))):
         query, label = query_list[i], label_list[i]
         top_inds, thresh_preds = evaluate_iter(cos_scores_matrix[i, :], args)
@@ -57,13 +60,9 @@ def evaluate(query_list, label_list, corpus, args):
             assert (len(top_inds) == 10)
         except AssertionError:
             top_inds = top_inds[:10]
-        # print(top_inds)
 
-        # print(ground_true[:20], thresh_preds[:20])
         f1 = f1_score(ground_true, thresh_preds)
         top_labels = label_list[top_inds]
-        # print(label)
-        # print(top_labels)
         rs = 1 * (top_labels == label)
 
         top_pred_list.append(rs)
@@ -71,9 +70,17 @@ def evaluate(query_list, label_list, corpus, args):
         f1_score_list.append(f1)
         thre_pred_list.append(thresh_preds)
 
+    duration = time.time() - start
+    print("Execution time: {:.2f}ms".format(duration * 1000 / len(query_list)))
     mAP = mean_average_precision(top_pred_list)
     mrr = mean_reciprocal_rank(top_pred_list)
     total_f1 = np.mean(f1_score_list)
+
+    if args.save_result:
+        save_file_name = "pca_pred%s.pickle" % ("_include_self" if args.include_self else "")
+        with open(os.path.join(args.save_dir, save_file_name), "wb") as f:
+            pickle.dump(thre_pred_list, f)
+        print("save pca prediction result over.")
 
     return mAP, mrr, total_f1
 
@@ -81,12 +88,14 @@ def evaluate(query_list, label_list, corpus, args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_dir", type=str, default="../../Dataset/shopee-product-matching/split_data")
+    parser.add_argument("--model_dir", type=str, default="../../Dataset/shopee-product-matching/split_data")
     parser.add_argument("--save_dir", type=str, default="../../tmp/shopee/")
     parser.add_argument("--model_name", type=str, default="glove")
     parser.add_argument("--n_components", type=int, default=50)
     parser.add_argument('--whiten', action='store_true')
     parser.add_argument('--include_self', action='store_true')
     parser.add_argument("--top_n", type=int, default="10")
+    parser.add_argument('--save_result', action='store_true')
     parser.add_argument("--threshold", type=float, default=0.85)
     args = parser.parse_args()
 
@@ -100,19 +109,19 @@ if __name__ == '__main__':
     print("train model over.")
 
     # evaluate
-    if args.include_self:
-        print("Include query itself")
-
     reduced_features = model.transform(test_X)
     # reduced_features = features
     mAP, mrr, F1 = evaluate(reduced_features, test_labels, reduced_features, args)
-    print("=" * 9, "Evaluation on test set", "=" * 9)
-    print("F1: {:.4f} mAP@10: {:.4f} MRR: {:.4f}".format(F1, mAP, mrr))
+    # # include self
+    # args.include_self = True
+    # _mAP, _mrr, _F1 = evaluate(reduced_features, test_labels, reduced_features, args)
+    # print("=" * 9, "Evaluation on test set", "=" * 9)
+    # print("& {:.4f} & {:.4f} & {:.4f} & {:.4f} & {:.4f} & {:.4f}".format(_F1, _mAP, _mrr, F1, mAP, mrr))
 
-    total_result = np.array([F1, mAP, mrr])
-    save_result = np.append(["F1", "mAP@10", "MRR"], total_result, axis=0)
-    file_name = "pca-%s-%d%s.txt" % (str(args.threshold), args.n_components, "-whiten" if args.whiten else "")
-    np.savetxt(os.path.join(args.save_dir, file_name), save_result, fmt='%s', delimiter=',')
+    # total_result = np.array([F1, mAP, mrr])
+    # save_result = np.append(["F1", "mAP@10", "MRR"], total_result, axis=0)
+    # file_name = "pca-%s-%d%s.txt" % (str(args.threshold), args.n_components, "-whiten" if args.whiten else "")
+    # np.savetxt(os.path.join(args.save_dir, file_name), save_result, fmt='%s', delimiter=',')
     # save_result = []
     # # print("\nAverage performance of 5 folds")
     # # print("\tF1\tmAP@10\tMRR")
