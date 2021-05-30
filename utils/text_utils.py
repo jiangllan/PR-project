@@ -41,12 +41,12 @@ def build_corpus(data_dir):
 
 
 def load_corpus(args):
-    aux_file = os.path.join(args.cache_dir, "tok_corpus.pickle")
+    aux_file = os.path.join(args.result_dir, "corpus.pickle")
     if not os.path.exists(aux_file):
         print("building corpus matrix from raw data...")
         corpus = build_corpus(args.data_dir)
-        if not os.path.exists(args.cache_dir):
-            os.mkdir(args.cache_dir)
+        if not os.path.exists(args.result_dir):
+            os.mkdir(args.result_dir)
         with open(aux_file, "wb") as f:
             pickle.dump(corpus, f)
         print("building corpus over.")

@@ -24,7 +24,7 @@ def tfidf_similarity(t1, t2):
 
 
 if __name__ == '__main__':
-    data_dir = "../../Dataset/shopee-product-matching/split_data"
+    data_dir = "../data/split_data"
     data = pd.read_csv(os.path.join(data_dir, "new_test.csv"))
     dic = {}
     P_Num = 0
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     print("# Positive pairs: ", total)
     print("write positive pairs to csv...")
     sen_pair.to_csv(os.path.join(data_dir, "pairwise_pos_test.csv"), index=False)
-    print("generate positive pairs successfully")
+    print("generate positive pairs successfully.")
 
     # '''generate nagetive sentences pairs'''
     # print("begin generate negative pairs...")

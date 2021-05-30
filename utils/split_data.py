@@ -115,12 +115,14 @@ def split_train_and_test(args):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", type=str, default="/cluster/home/hjjiang/PR-project/data")
-    parser.add_argument("--save_dir", type=str, default="/cluster/home/hjjiang/PR-project/data/new_split_data/")
+    parser.add_argument("--data_dir", type=str, default="../data")
+    parser.add_argument("--save_dir", type=str, default="../data/split_data/")
     parser.add_argument("--n_splits", type=int, default=5)
     parser.add_argument("--train_size", type=float, default=0.6, help="Should be between 0 and 1.")
     parser.add_argument("--dev_size", type=float, default=0.1, help="Should be between 0 and 1.")
     args = parser.parse_args()
+
+
 
     split_same_group_sample_to_diff_set(args)
 
