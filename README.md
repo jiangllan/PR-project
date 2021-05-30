@@ -114,11 +114,11 @@ cd text/
 
    ```python
    python run_bert.py \
-   		--data_dir ../data/split_data \
-     	--result_dir ../result/text \
-     	--model_name indo \
+       --data_dir ../data/split_data \
+       --result_dir ../result/text \
+       --model_name distilbert-base-indonesian \
        --train_batch_size 16 \
-       --num_epochs 8 \
+       --num_epochs var = 8 \
        --do_train
    ```
 
@@ -157,10 +157,10 @@ cd text/
        
    # 目标不包含自身
    python run_pca.py \
-   		--data_dir ../data/split_data \
-   		--result_dir ../result/text \
-       --threshold 0.7 \
-       --do_eval
+     --data_dir ../data/split_data \
+     --result_dir ../result/text \
+     --threshold 0.7 \
+     --do_eval
    ```
 
 3. BERT模型
@@ -168,20 +168,20 @@ cd text/
    ```python
    # 目标包含自身
    python run_bert.py \
-   		--data_dir ../data/split_data \
-     	--result_dir ../result/text \
-     	--model_name indo \
-       --threshold 0.7 \
-       --include_self \
-       --do_eval
+     --data_dir ../data/split_data \
+     --result_dir ../result/text \
+     --model_name indo \
+     --threshold 0.7 \
+     --include_self \
+     --do_eval
        
    # 目标不包含自身
    python run_bert.py \
-   		--data_dir ../data/split_data \
-     	--result_dir ../result/text \
-     	--model_name indo \
-       --threshold 0.7 \
-       --do_eval
+     --data_dir ../data/split_data \
+     --result_dir ../result/text \
+     --model_name indo \
+     --threshold 0.7 \
+     --do_eval
    ```
 
 
@@ -371,10 +371,10 @@ cd image/
        
    # 目标不包含自身
    python run_pca.py \
-   		--data_dir ../data/split_data \
-   		--result_dir ../result/ensemble \
-       --threshold 0.7 \
-       --do_eval
+    --data_dir ../data/split_data \
+    --result_dir ../result/ensemble \
+    --threshold 0.7 \
+    --do_eval
    ```
 
 #### 最优结果复现
@@ -389,7 +389,7 @@ cd image/
    cd ./multimodal
    
    python run_ensemble.py \
-   	--data_dir ../data/split_data \
+     --data_dir ../data/split_data \
      --result_dir ../result/ensemble \
    ```
 

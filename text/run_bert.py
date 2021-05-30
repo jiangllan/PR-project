@@ -134,7 +134,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     modelAbbr = {
-        "indo": "cahya/distilbert-base-indonesian",
+        "distilbert-base-indonesian": "cahya/distilbert-base-indonesian",
         "xlm-100": "sentence-transformers/xlm-r-100langs-bert-base-nli-stsb-mean-tokenss",
         "xlm-multi": "sentence-transformers/stsb-xlm-r-multilingual"
     }
