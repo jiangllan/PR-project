@@ -4,6 +4,9 @@
 # @Author  : Lan Jiang
 # @File    : text_utils.py
 
+import nltk
+# nltk.download('stopwords')
+# nltk.download('wordnet')
 import pandas as pd
 import numpy as np
 import os
@@ -41,7 +44,7 @@ def build_corpus(data_dir):
 
 
 def load_corpus(args):
-    aux_file = os.path.join(args.result_dir, "corpus.pickle")
+    aux_file = os.path.join(args.result_dir, "tok_corpus.pickle")
     if not os.path.exists(aux_file):
         print("building corpus matrix from raw data...")
         corpus = build_corpus(args.data_dir)
@@ -59,8 +62,7 @@ def load_corpus(args):
 
 
 def load_features(args, split):
-    file_name = "new_%s" % split
-    with open(os.path.join(args.model_dir, args.model_name, "%s_features.pickle" % file_name), "rb") as f:
+    with open(os.path.join(args.model_dir, args.model_name, "%s_features.pickle" % split), "rb") as f:
         features = pickle.load(f)
 
     data = pd.read_csv(os.path.join(args.data_dir, "%s.csv" % file_name))
@@ -70,8 +72,7 @@ def load_features(args, split):
 
 
 def load_data(args, split):
-    file_name = "new_%s" % split
-    data = pd.read_csv(os.path.join(args.data_dir, "%s.csv" % file_name))
+    data = pd.read_csv(os.path.join(args.data_dir, "%s.csv" % split))
     return data
 
 

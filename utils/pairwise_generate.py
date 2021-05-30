@@ -13,7 +13,6 @@ import numpy as np
 import pandas as pd
 from scipy.linalg import norm
 from sklearn.feature_extraction.text import TfidfVectorizer
-import progressbar
 
 
 def tfidf_similarity(t1, t2):
@@ -25,13 +24,9 @@ def tfidf_similarity(t1, t2):
 
 if __name__ == '__main__':
     data_dir = "../data/split_data"
-    data = pd.read_csv(os.path.join(data_dir, "new_test.csv"))
+    data = pd.read_csv(os.path.join(data_dir, "train.csv"))
     dic = {}
     P_Num = 0
-    sen_pair = pd.DataFrame()
-    columns = ['title_1', 'title_2', 'label']
-    insertRow = pd.DataFrame([columns])
-    sen_pair = sen_pair.append(insertRow, ignore_index=True)
 
     for index, row in data.iterrows():
         if row['label_group'] not in dic.keys():
@@ -41,25 +36,20 @@ if __name__ == '__main__':
 
     '''generate positive sentences pairs'''
     print("begin generate positive pairs...")
-    total = 0
-    p = progressbar.ProgressBar()
-    for i, label in p(enumerate(dic)):
-        # print(topic)
+    pairs = []
+    for i, label in enumerate(dic):
         size = len(dic[label])
         positive_list = random.Random(8).sample(range(0, size), int(size))
         for item1 in positive_list:
             for item2 in positive_list:
                 if item1 < item2:
-                    add_data = [dic[label][item1], dic[label][item2], 1]
-                    if total < 2:
-                        print("Pos sample: ", add_data)
-                    insertRow = pd.DataFrame([add_data])
-                    sen_pair = sen_pair.append(insertRow, ignore_index=True)
-                    total += 1
+                    pairs.append([dic[label][item1], dic[label][item2], 1])
 
-    print("# Positive pairs: ", total)
+    pairs = np.array(pairs)
+    sen_pair = pd.DataFrame({"title_1": pairs[:, 0], "title_2": pairs[:, 1], "label": pairs[:, 2]})
+    print("# Positive pairs: ", len(pairs))
     print("write positive pairs to csv...")
-    sen_pair.to_csv(os.path.join(data_dir, "pairwise_pos_test.csv"), index=False)
+    sen_pair.to_csv(os.path.join(data_dir, "pairwise_pos_train.csv"), index=False)
     print("generate positive pairs successfully.")
 
     # '''generate nagetive sentences pairs'''

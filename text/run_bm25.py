@@ -4,15 +4,12 @@
 # @Author  : Lan Jiang
 # @File    : run_bm25.py
 
-import os
-import sys
-
-sys.path.append("..")
-# print(sys.path)
 import argparse
-from utils.text_utils import load_data
+import sys
+import os
+from text_utils import load_data
 import numpy as np
-from utils.metrics import mean_average_precision, mean_reciprocal_rank
+from metrics import mean_average_precision, mean_reciprocal_rank
 from sklearn.metrics import f1_score
 import progressbar
 from gensim.summarization import bm25
@@ -77,7 +74,7 @@ def evaluate(query_list, label_list, bm25_model, corpus_label_list, args):
         thre_pred_list.append(thresh_preds)
 
     duration = time.time() - start
-    print("Execution time: {:.2f}ms".format(duration * 1000 / len(query_list)))
+    # print("Execution time: {:.2f}ms".format(duration * 1000 / len(query_list)))
     mAP = mean_average_precision(top_pred_list)
     mrr = mean_reciprocal_rank(top_pred_list)
     total_f1 = np.mean(f1_score_list)
@@ -94,46 +91,46 @@ def evaluate(query_list, label_list, bm25_model, corpus_label_list, args):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", type=str, default="../../Dataset/shopee-product-matching/split_data")
-    parser.add_argument("--cache_dir", type=str, default="../../Dataset/shopee-product-matching/aux_files")
+    parser.add_argument("--data_dir", type=str, default="../data/split_data")
     parser.add_argument("--threshold", type=int, default="20")
-    parser.add_argument("--save_dir", type=str, default="../../tmp/shopee/")
+    parser.add_argument("--result_dir", type=str, default="../tmp/result/text")
     parser.add_argument("--top_n", type=int, default=10)
     parser.add_argument('--include_self', action='store_true')
+    parser.add_argument('--do_train', action='store_true')
+    parser.add_argument('--do_eval', action='store_true')
     parser.add_argument('--save_result', action='store_true')
     args = parser.parse_args()
 
-    if args.include_self:
+    if args.do_train:
         data = load_data(args, "test")
-    else:
-        data = load_data(args, "train")
+        corpus = [title.split() for title in data['std_title'].tolist()]
+        bm25_model = BM25(corpus)
+        with open(os.path.join(args.result_dir, "bm25_model.pickle"), "wb") as f:
+            pickle.dump(bm25_model, f)
+        print("Train & save BM25 model over.")
 
-    corpus = [title.split() for title in data['std_title'].tolist()]
-    corpus_label_list = data['label_group'].to_numpy()
-    bm25_model = BM25(corpus)
-    print("Build BM25 model over.")
-    test = load_data(args, "test")
-    query_list = test['std_title'].to_numpy()
-    label_list = test['label_group'].to_numpy()
+    if args.do_eval:
+        # load model
+        model_file = os.path.join(args.result_dir, "bm25_model.pickle")
+        if not os.path.exists(model_file):
+            print("Please train model first")
+            sys.exit()
+        else:
+            with open(model_file, 'rb') as f:
+                bm25_model = pickle.load(f)
 
-    # evaluate
-    print("=" * 9, "Evaluation", "=" * 9)
-    mAP, mrr, F1 = evaluate(query_list, label_list, bm25_model, corpus_label_list, args)
-    print("F1: {:.4f} mAP@10: {:.4f} MRR: {:.4f}".format(F1, mAP, mrr))
+        test = load_data(args, "test")
+        query_list = test['std_title'].to_numpy()
+        label_list = test['label_group'].to_numpy()
+        corpus_label_list = test['label_group'].to_numpy()
 
-    total_result = np.array([F1, mAP, mrr])
-    save_result = np.append(["F1", "mAP@10", "MRR"], total_result, axis=0)
-    file_name = "bm25-%s.txt" % str(args.threshold)
-    np.savetxt(os.path.join(args.save_dir, file_name), save_result, fmt='%s', delimiter=',')
+        # evaluate
+        print("=" * 9, "Evaluation", "=" * 9)
+        mAP, mrr, F1 = evaluate(query_list, label_list, bm25_model, corpus_label_list, args)
+        print("F1: {:.4f} mAP@10: {:.4f} MRR: {:.4f}".format(F1, mAP, mrr))
 
-    # # print("\nAverage performance of 5 folds")
-    # # print("\tF1\tmAP@10\tMRR")
-    # for i, split in enumerate(["dev", "test"]):
-    #     orig = total_result[:, :, i, :]
-    #     orig = np.append(orig, [np.mean(total_result[:, i, :], axis=0)], axis=0)
-    #     orig = np.append([['1'], ['2'], ['3'], ['4'], ['5'], ['AVG']], orig, axis=1)
-    #
-    #     file_name = "bm25-%s-%s.txt" % (split, str(args.threshold))
-    #     np.savetxt(os.path.join(args.save_dir, file_name), orig, fmt='%s', delimiter=',')
-
-    print("Over.")
+        if args.save_result:
+            total_result = np.array([F1, mAP, mrr])
+            save_result = np.append(["F1", "mAP@10", "MRR"], total_result, axis=0)
+            file_name = "bm25-%s.txt" % str(args.threshold)
+            np.savetxt(os.path.join(args.save_dir, file_name), save_result, fmt='%s', delimiter=',')

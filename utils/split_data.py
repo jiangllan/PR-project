@@ -10,6 +10,7 @@ import argparse
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import GroupShuffleSplit
+import progressbar
 
 
 def split_same_group_sample_to_diff_set(args):
@@ -19,21 +20,23 @@ def split_same_group_sample_to_diff_set(args):
     data['target'] = data.label_group.map(tmp)
     train_idx, val_idx, test_idx = [], [], []
     split_group = []
-    print(original_data.iloc[0, :])
-    print(data.iloc[0, :])
+    # print(original_data.iloc[0, :])
+    # print(data.iloc[0, :])
 
-    for cur_data_id in range(data.shape[0]):
+    print("Spliting...")
+    p = progressbar.ProgressBar()
+    for cur_data_id in p(range(data.shape[0])):
         cur_data = data.iloc[cur_data_id, :]
         group_sample_number = len(cur_data.target)
         if cur_data.label_group not in split_group:
-            print('Processing the {}-th data'.format(cur_data_id))
+            # print('Processing the {}-th data'.format(cur_data_id))
             if group_sample_number < 6:
-                print('\t group sample number = {} < 6'.format(group_sample_number))
+                # print('\t group sample number = {} < 6'.format(group_sample_number))
                 for j in range(group_sample_number):
                     train_idx.append(data[data.posting_id == cur_data.target[j]].index.tolist()[0])
                 split_group.append(cur_data.label_group)
             elif 6 <= group_sample_number < 20:
-                print('\t 6 <= group_sample_number = {} < 20'.format(group_sample_number))
+                # print('\t 6 <= group_sample_number = {} < 20'.format(group_sample_number))
                 index_list = [i for i in range(group_sample_number)]
                 random.Random(8).shuffle(index_list)
                 # tmp_train_target = []
@@ -51,7 +54,7 @@ def split_same_group_sample_to_diff_set(args):
                             data[data.posting_id == cur_data.target[index_list[j]]].index.tolist()[0])
                 split_group.append(cur_data.label_group)
             else:
-                print('\t group_sample_number = {} >= 20'.format(group_sample_number))
+                # print('\t group_sample_number = {} >= 20'.format(group_sample_number))
                 index_list = [i for i in range(group_sample_number)]
                 random.Random(8).shuffle(index_list)
                 for j in range(group_sample_number):
@@ -67,7 +70,8 @@ def split_same_group_sample_to_diff_set(args):
                             data[data.posting_id == cur_data.target[index_list[j]]].index.tolist()[0])
                 split_group.append(cur_data.label_group)
         else:
-            print('{}-th data already processed'.format(cur_data_id))
+            pass
+            # print('{}-th data already processed'.format(cur_data_id))
 
     assert len(train_idx) + len(val_idx) + len(test_idx) == data.shape[0]
     train, val, test = original_data.iloc[train_idx, :], original_data.iloc[val_idx, :], original_data.iloc[test_idx, :]
@@ -82,9 +86,11 @@ def split_same_group_sample_to_diff_set(args):
     test['target'] = test.label_group.map(tmp)
 
     print("train %d val %d test %d" % (len(train), len(val), len(test)))
-    train.to_csv(os.path.join(args.save_dir, "new_train.csv"), index=False)
-    val.to_csv(os.path.join(args.save_dir, "new_val.csv"), index=False)
-    test.to_csv(os.path.join(args.save_dir, "new_test.csv"), index=False)
+    if not os.path.exists(args.save_dir):
+        os.mkdir(args.save_dir)
+    train.to_csv(os.path.join(args.save_dir, "train.csv"), index=False)
+    val.to_csv(os.path.join(args.save_dir, "val.csv"), index=False)
+    test.to_csv(os.path.join(args.save_dir, "test.csv"), index=False)
 
 
 def split_train_and_test(args):
@@ -113,7 +119,7 @@ def split_train_and_test(args):
     print("Split and save %d-fold train&test data over." % (split-1))
 
 
-def main():
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_dir", type=str, default="../data")
     parser.add_argument("--save_dir", type=str, default="../data/split_data/")
@@ -122,10 +128,4 @@ def main():
     parser.add_argument("--dev_size", type=float, default=0.1, help="Should be between 0 and 1.")
     args = parser.parse_args()
 
-
-
     split_same_group_sample_to_diff_set(args)
-
-
-if __name__ == "__main__":
-    main()

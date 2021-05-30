@@ -4,14 +4,9 @@
 # @Author  : Lan Jiang
 # @File    : preprocess.py
 
-import sys
-sys.path.append("..")
-
 import os
 import pandas as pd
-import pickle
-import progressbar
-from utils.text_utils import load_corpus
+from text_utils import load_corpus
 import argparse
 
 
@@ -21,7 +16,8 @@ if __name__ == '__main__':
     parser.add_argument("--result_dir", type=str, default="../result/text")
     args = parser.parse_args()
 
-    corpus = load_corpus(args)
+    tok_corpus = load_corpus(args)
+    corpus = [' '.join(item) for item in tok_corpus]
     raw_data = pd.read_csv(os.path.join(args.data_dir, "train.csv"))
 
     raw_data['std_title'] = corpus

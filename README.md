@@ -39,20 +39,31 @@ pip install -r requirements.txt
 
 本项目所用数据为课程提供的清华云盘[数据](https://cloud.tsinghua.edu.cn/f/5c7ba8c55e04478d86d9/)，请下载后将数据文件放置在本项目代码根目录`codes`下。
 
-下载完成后，依次执行
+下载完成后，依次执行命令：
 
 ```shell
 unzip -d ./data shopee-product-matching.zip
-cd data
+mkdir -p result/text result/image
+cd ./utils
+```
+
+数据预处理及划分耗时较长，方便起见，我们提供已经处理完毕的[结果文件](https://cloud.tsinghua.edu.cn/f/1ee515abc94a46a6bec5/?dl=1)，可下载解压后放入`./data`路径下。若要完全复现处理过程，请执行：
+
+```python
 # 数据预处理
 python preprocess.py
 # 数据集划分
 python split_data.py
+```
+
+训练数据生成：
+
+```python
 # BERT模型训练数据生成
 python pairwise_generate.py
 ```
 
-即完成数据准备，可以进入模型训练及测试环节。
+数据准备完成。
 
 ## 模型训练及测试
 
@@ -68,29 +79,33 @@ cd text/
 
    ```python
    python run_bm25.py \
-   		--data_dir ../data \
-   		--save_dir ../result/text \
-   		--threshold 18 \
-   		--include_self \
+   		--data_dir ../data/split_data \
+   		--result_dir ../result/text \
        --do_train
    ```
-
+   
 2. PCA模型
 
-   ```python
-   # 提取特征
-   wget .... # 下载Glove预训练模型
-   python ext_features.py \
-   		--model_name glove \   # 提取特征
-   
-   python run_pca.py \
-   		--data_dir ../data \
-     	--save_dir ../result/text \
-       --n_components 15 \
-       --threshold 0.75 \
-       --whiten \
-       --do_train 
-   ```
+   1. 特征提取。由于模型较大，方便起见我们提供已经准备好的[特征文件](https://cloud.tsinghua.edu.cn/f/d1614c9d79124ba98eb1/?dl=1)，可下载后放入`./data/split_data/`目录下。若要完全复现处理过程，请首先下载模型文件，放入`./result/text/`目录下，然后执行命令：
+
+      ```python
+      python ext_features.py \
+      		--data_dir ../data/split_data \
+        	--result_dir ../result/text \
+      		--model_name glove
+      ```
+
+    2. 模型训练
+
+     ```python
+     python run_pca.py \
+        --data_dir ../data \
+        --save_dir ../result/text \
+         --n_components 15 \
+         --threshold 0.75 \
+         --whiten \
+         --do_train 
+     ```
 
 3. BERT模型
 
@@ -107,7 +122,28 @@ cd text/
 #### 模型加载及测试
 
 1. BM25模型
+
+   ```python
+   # 目标包含自身
+   python run_bm25.py \
+   		--data_dir ../data/split_data \
+   		--result_dir ../result/text \
+       --threshold 18 \
+       --include_self \
+       --do_eval
+       
+   # 目标不包含自身
+   python run_bm25.py \
+   		--data_dir ../data/split_data \
+   		--result_dir ../result/text \
+       --threshold 18 \
+       --do_eval
+   ```
+
+   
+
 2. PCA模型
+
 3. BERT模型
 
 #### 最优模型结果复现

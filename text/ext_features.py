@@ -17,7 +17,7 @@ from sentence_transformers import SentenceTransformer
 class GloveEncoder(object):
     def __init__(self, args):
         self.model = KeyedVectors.load_word2vec_format(
-            os.path.join(args.data_dir, "../../", "mymodel.bin"), binary=True)
+            os.path.join(args.result_dir, "mymodel.bin"), binary=True)
 
     def encode(self, titles):
         embedding_corpus = []
@@ -35,16 +35,10 @@ class GloveEncoder(object):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", type=str, default="../../Dataset/shopee-product-matching/split_data")
-    parser.add_argument("--save_dir", type=str, default="../../Dataset/shopee-product-matching/split_data")
-    parser.add_argument("--model_name", type=str, default="xlm-r-100langs-bert-base-nli-stsb-mean-tokens")
+    parser.add_argument("--data_dir", type=str, default="../data/split_data")
+    parser.add_argument("--result_dir", type=str, default="../result/text")
+    parser.add_argument("--model_name", type=str, default="glove")
     args = parser.parse_args()
-
-    methodAbbr = {
-        "sentence-transformers/xlm-r-100langs-bert-base-nli-stsb-mean-tokens": "xlm-100",
-        "sentence-transformers/stsb-xlm-r-multilingual": "xlm-multi",
-        "cahya/distilbert-base-indonesian": "indo"
-    }
 
     # load model
     if args.model_name == "glove":
@@ -53,9 +47,12 @@ if __name__ == "__main__":
         model = SentenceTransformer(args.model_name)
     print("load model over.")
 
+    save_dir = os.path.join(args.result_dir, args.model_name)
+    if not os.path.exists(save_dir):
+        os.mkdir(save_dir)
+
     for split in ['train', 'test', 'val']:
-        file_name = "new_%s" % split
-        data = pd.read_csv(os.path.join(args.data_dir, "%s.csv" % file_name))
+        data = pd.read_csv(os.path.join(args.data_dir, "%s.csv" % split))
         titles = data['std_title'].tolist()
         # for j, item in enumerate(titles):
         #     try:
@@ -64,9 +61,9 @@ if __name__ == "__main__":
         #         print(j, " ", item)
         titles_embeddings = model.encode(titles)
 
-        with open(os.path.join(args.save_dir, "%s_features.pickle" % file_name), "wb") as f:
+        with open(os.path.join(save_dir, "%s_features.pickle" % split), "wb") as f:
             pickle.dump(titles_embeddings, f)
-        print("save %s embeddings produced by %s over." % (file_name, args.model_name))
+        print("save %s embeddings produced by %s over." % (split, args.model_name))
 
     # # save
     # cos_scores = util.pytorch_cos_sim(query_embedding, corpus_embeddings)[0]

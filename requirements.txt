@@ -1,6 +1,4 @@
 gensim==3.8.3
-pandas==1.1.5
-numpy==1.18.5
 progressbar33==2.4
 utils==1.0.1
 opencv_python==4.5.1.48
