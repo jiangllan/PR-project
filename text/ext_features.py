@@ -44,10 +44,10 @@ if __name__ == "__main__":
     if args.model_name == "glove":
         model = GloveEncoder(args)
     else:
-        model = SentenceTransformer(args.model_name)
+        model = SentenceTransformer(os.path.join(args.result_dir, args.model_name))
     print("load model over.")
 
-    save_dir = os.path.join(args.result_dir, args.model_name)
+    save_dir = os.path.join(args.data_dir, args.model_name)
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
 

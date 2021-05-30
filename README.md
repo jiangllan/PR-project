@@ -43,7 +43,7 @@ pip install -r requirements.txt
 
 ```shell
 unzip -d ./data shopee-product-matching.zip
-mkdir -p result/text result/image
+mkdir -p result/text result/image result/ensemble
 cd ./utils
 ```
 
@@ -79,42 +79,40 @@ cd text/
 
    ```python
    python run_bm25.py \
-   		--data_dir ../data/split_data \
-   		--result_dir ../result/text \
-       --do_train
+     --data_dir ../data/split_data \
+     --result_dir ../result/text \
+     --do_train
    ```
    
 2. PCA模型
 
-   1. 特征提取。由于模型较大，方便起见我们提供已经准备好的[特征文件](https://cloud.tsinghua.edu.cn/f/d1614c9d79124ba98eb1/?dl=1)，可下载后放入`./data/split_data/`目录下。若要完全复现处理过程，请首先下载模型文件，放入`./result/text/`目录下，然后执行命令：
+   1. 特征提取。由于模型较大，方便起见我们提供已经准备好的[特征文件](https://cloud.tsinghua.edu.cn/f/d1614c9d79124ba98eb1/?dl=1)，下载后放入`./data/split_data/`目录下。若要完全复现处理过程，请首先下载模型文件，放入`./result/text/`目录下，然后执行命令：
 
       ```python
       python ext_features.py \
-      		--data_dir ../data/split_data \
-        	--result_dir ../result/text \
-      		--model_name glove
+        --data_dir ../data/split_data \
+        --result_dir ../result/text \
+        --model_name glove
       ```
 
     2. 模型训练
 
-     ```python
-     python run_pca.py \
-        --data_dir ../data \
-        --save_dir ../result/text \
-         --n_components 15 \
-         --threshold 0.75 \
-         --whiten \
+       ```python
+       python run_pca.py \
+         --data_dir ../data/split_data \
+         --result_dir ../result/text \
+         --n_components 200 \
          --do_train 
-     ```
-
+       ```
+   
 3. BERT模型
 
    ```python
    python run_bert.py \
-   		--data_dir ../data \
+   		--data_dir ../data/split_data \
+     	--result_dir ../result/text \
      	--model_name indo \
-       --model_save_path ../result/text \
-       --train_batch_size 123 \
+       --train_batch_size 16 \
        --num_epochs 8 \
        --do_train
    ```
@@ -126,71 +124,116 @@ cd text/
    ```python
    # 目标包含自身
    python run_bm25.py \
-   		--data_dir ../data/split_data \
-   		--result_dir ../result/text \
-       --threshold 18 \
-       --include_self \
-       --do_eval
+     --data_dir ../data/split_data \
+     --result_dir ../result/text \
+     --threshold 18 \
+     --include_self \
+     --do_eval
        
    # 目标不包含自身
    python run_bm25.py \
-   		--data_dir ../data/split_data \
-   		--result_dir ../result/text \
-       --threshold 18 \
-       --do_eval
+     --data_dir ../data/split_data \
+     --result_dir ../result/text \
+     --threshold 18 \
+     --do_eval
    ```
 
    
 
 2. PCA模型
 
+   ```python
+   # 目标包含自身且使用白化
+   python run_pca.py \
+     --data_dir ../data/split_data \
+     --result_dir ../result/text \
+     --threshold 0.7 \
+     --include_self \
+     --whiten \
+     --do_eval
+       
+   # 目标不包含自身
+   python run_pca.py \
+   		--data_dir ../data/split_data \
+   		--result_dir ../result/text \
+       --threshold 0.7 \
+       --do_eval
+   ```
+
+   
+
 3. BERT模型
+
+   ```python
+   # 目标包含自身
+   python run_bert.py \
+   		--data_dir ../data/split_data \
+     	--result_dir ../result/text \
+     	--model_name indo \
+       --threshold 0.7 \
+       --include_self \
+       --do_eval
+       
+   # 目标不包含自身
+   python run_bert.py \
+   		--data_dir ../data/split_data \
+     	--result_dir ../result/text \
+     	--model_name indo \
+       --threshold 0.7 \
+       --do_eval
+   ```
+
+   
 
 #### 最优模型结果复现
 
-文本最优单一模型是基于BERT的深度语义匹配模型，因训练时间较长，为方便助教快速复现结果，我们提供使用训练完毕的模型文件：
+文本最优单一模型是基于BERT的深度语义匹配模型，首先下载训练完毕的[模型文件](https://cloud.tsinghua.edu.cn/f/a549138f7e294264bcf0/?dl=1)，将模型文件放入`./result/text/`目录下并解压。
 
-```shell
-# 最优模型文件下载
-cd ../result/text/
-wget ...
-unzip -d 
-```
-使用最优模型在测试集上进行测试：
+首先使用模型进行特征提取：
 
 ```python
 # 特征提取
-cd .././text
-python ext_features.py \
-		--model_name bert
+cd ./text
+python ext_features.py --model_name distilbert-base-indonesian
 ```
+
+由于模型文件较大，考虑下载和使用不便，我们同样提供已经准备好的[特征文件](https://cloud.tsinghua.edu.cn/f/d1614c9d79124ba98eb1/?dl=1)，下载后放入`./data/split_data/`目录下，即可进行后续测试。
+
+使用最优模型在测试集上进行测试：
 
 1. 目标包含自身
 
    ```python
    python run_bert.py \
-   		--model_dir ../result/text \
-     	--threshold 0.7 \
-     	--do_eval
+     --result_dir ../result/text \
+     --data_dir ../data/split_data \
+     --threshold 0.7 \
+     --include_self \
+     --model_name distilbert-base-indonesian \
+     --do_eval
    ```
 
    预期结果：
 
    ```shell
-   F1:
+   F1: 0.7713 mAP@10: 0.9800 MRR: 0.9988
    ```
 
 2. 目标不包含自身
 
    ```python
    python run_bert.py \
-   		--model_dir ../result/text \
+     --result_dir ../result/text \
+     --data_dir ../data/split_data \
+     --model_name distilbert-base-indonesian \
+     --threshold 0.6 \
+     --do_eval
    ```
 
    预期结果：
 
    ```shell
-   F1: 
+   F1: 0.5781 mAP@10: 0.7200 MRR: 0.7250
    ```
 
    
@@ -199,9 +242,74 @@ python ext_features.py \
 
 ### 基于混合信息的检索模型
 
+#### 模型训练及保存
+
 1. PCA模型
+
+   ```python
+   python run_pca.py \
+     --data_dir ../data/split_data \
+     --result_dir ../result/ensemble \
+     --n_components 200 \
+     --do_train 
+   ```
+
 2. kNN模型
-3. Ensemble方法
+
+#### 模型加载及测试
+
+1. PCA模型
+
+   ```python
+   # 目标包含自身且使用白化
+   python run_pca.py \
+     --data_dir ../data/split_data \
+     --result_dir ../result/ensemble \
+     --threshold 0.7 \
+     --include_self \
+     --whiten \
+     --do_eval
+       
+   # 目标不包含自身
+   python run_pca.py \
+   		--data_dir ../data/split_data \
+   		--result_dir ../result/ensemble \
+       --threshold 0.7 \
+       --do_eval
+   ```
+
+   
+
+2. kNN模型
+
+#### 最优结果复现
+
+混合信息检索的最优模型由使用单一信息的最优模型Ensemble得到，复现方法如下：
+
+1. 首先准备单一模型最优结果。具体复现方式我们已经在前文中详细给出，需运行单一信息检索最优模型并保存结果。为了方便结果复现，我们提供已经生成的结果文件，下载后将文件放入`result/ensemble`文件夹下并解压即可。
+
+2. 使用最优模型在测试集上进行测试
+
+   ```python
+   cd ./multimodal
+   
+   python run_ensemble.py \
+   	--data_dir ../data/split_data \
+     --result_dir ../result/ensemble \
+   ```
+
+   预期结果：
+
+   ```shell
+   Vote [include self]
+   F1: 0.8136
+   Vote [exclude self]
+   F1: 0.6372
+   ```
+
+   
+
+
 
 
 

@@ -6,12 +6,10 @@
 
 import os
 import sys
-
-sys.path.append("..")
-from utils.text_utils import load_features
+from text_utils import load_features
 from sklearn.metrics import f1_score
 from sklearn.metrics.pairwise import cosine_similarity
-from utils.metrics import mean_average_precision, mean_reciprocal_rank
+from metrics import mean_average_precision, mean_reciprocal_rank
 from sklearn.decomposition import PCA
 import numpy as np
 import argparse
@@ -87,57 +85,58 @@ def evaluate(query_list, label_list, corpus, args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", type=str, default="../../Dataset/shopee-product-matching/split_data")
-    parser.add_argument("--model_dir", type=str, default="../../Dataset/shopee-product-matching/split_data")
-    parser.add_argument("--save_dir", type=str, default="../../tmp/shopee/")
+    parser.add_argument("--data_dir", type=str, default="../data/split_data/")
+    parser.add_argument("--result_dir", type=str, default="../result/ensemble")
+    parser.add_argument("--model_name", type=str, default="glove")
     parser.add_argument("--n_components", type=int, default=50)
     parser.add_argument('--whiten', action='store_true')
     parser.add_argument('--include_self', action='store_true')
     parser.add_argument("--top_n", type=int, default="10")
     parser.add_argument('--save_result', action='store_true')
     parser.add_argument("--threshold", type=float, default=0.85)
+    parser.add_argument('--do_train', action='store_true')
+    parser.add_argument('--do_eval', action='store_true')
     args = parser.parse_args()
 
     # load features
-    args.model_name = "indo"
-    text_train_X, _ = load_features(args, "train")
-    text_test_X, _ = load_features(args, "test")
+    if args.do_train:
+        args.model_name = "indo"
+        text_train_X, train_labels = load_features(args, "train")
+        img_train_X = np.load(os.path.join(args.data_dir, "train_resnet50_224_feature.npy"))
 
-    args.model_name = "resnet"
-    img_train_X, train_labels = load_features(args, "train")
-    img_test_X, test_labels = load_features(args, "test")
+        # concat
+        train_X = np.concatenate([img_train_X, text_train_X], axis=1)
 
-    # concat
-    train_X = np.concatenate([img_train_X, text_train_X], axis=1)
-    test_X = np.concatenate([img_test_X, text_test_X], axis=1)
+        # train
+        model = train(train_X, args)
+        print("train model over.")
 
-    # train
-    model = train(train_X, args)
-    print("train model over.")
+        with open(os.path.join(args.result_dir, "pca_model.pickle"), "wb") as f:
+            pickle.dump(model, f)
+        print("Train & save PCA model over.")
 
     # evaluate
-    reduced_features = model.transform(test_X)
-    # reduced_features = features
-    mAP, mrr, F1 = evaluate(reduced_features, test_labels, reduced_features, args)
-    # include self
-    args.include_self = True
-    _mAP, _mrr, _F1 = evaluate(reduced_features, test_labels, reduced_features, args)
-    print("=" * 9, "Evaluation on test set", "=" * 9)
-    print("& {:.4f} & {:.4f} & {:.4f} & {:.4f} & {:.4f} & {:.4f}".format(_F1, _mAP, _mrr, F1, mAP, mrr))
+    if args.do_eval:
+        args.model_name = "distilbert-base-indonesian"
+        text_test_X, test_labels = load_features(args, "test")
+        img_test_X = np.load(os.path.join(args.data_dir, "test_resnet50_224_feature.npy"))
+        test_X = np.concatenate([img_test_X, text_test_X], axis=1)
+        model_file = os.path.join(args.result_dir, "pca_model.pickle")
+        if not os.path.exists(model_file):
+            print("Please train model first")
+            sys.exit()
+        else:
+            with open(model_file, 'rb') as f:
+                model = pickle.load(f)
+        reduced_features = model.transform(test_X)
+        # reduced_features = features
+        mAP, mrr, F1 = evaluate(reduced_features, test_labels, reduced_features, args)
+        print("=" * 9, " Evaluation ", "=" * 9)
+        print("F1: {:.4f} mAP@10: {:.4f} MRR: {:.4f}".format(F1, mAP, mrr))
 
-    # total_result = np.array([F1, mAP, mrr])
-    # save_result = np.append(["F1", "mAP@10", "MRR"], total_result, axis=0)
-    # file_name = "pca-%s-%d%s.txt" % (str(args.threshold), args.n_components, "-whiten" if args.whiten else "")
-    # np.savetxt(os.path.join(args.save_dir, file_name), save_result, fmt='%s', delimiter=',')
-    # save_result = []
-    # # print("\nAverage performance of 5 folds")
-    # # print("\tF1\tmAP@10\tMRR")
-    # for i, split in enumerate(["dev", "test"]):
-    #     orig = total_result[:, i, :]
-    #     orig = np.append(orig, [np.mean(total_result[:, i, :], axis=0)], axis=0)
-    #     orig = np.append([['1'], ['2'], ['3'], ['4'], ['5'], ['AVG']], orig, axis=1)
-    #     orig = np.append([["fold", "F1", "mAP@10", "MRR"]], orig, axis=0)
-    #     file_name = "pca-%s-%s-%s-%d%s.txt" % (split, args.model_name, str(args.threshold), args.n_components, "-whiten" if args.whiten else "")
-    #     np.savetxt(os.path.join(args.save_dir, file_name), orig, fmt='%s', delimiter=',')
+    if args.save_result:
+        total_result = np.array([F1, mAP, mrr])
+        save_result = np.append(["F1", "mAP@10", "MRR"], total_result, axis=0)
+        file_name = "pca-%s-%d%s.txt" % (str(args.threshold), args.n_components, "-whiten" if args.whiten else "")
+        np.savetxt(os.path.join(args.save_dir, file_name), save_result, fmt='%s', delimiter=',')
 
-    print("Over.")

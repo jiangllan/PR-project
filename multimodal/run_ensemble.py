@@ -10,9 +10,7 @@ import argparse
 import os
 import numpy as np
 import sys
-
-sys.path.append("..")
-from utils.text_utils import load_data
+from text_utils import load_data
 
 
 def load_ground_true(args, include_self):
@@ -31,7 +29,7 @@ def load_ground_true(args, include_self):
 
 def load_single_model_pred(method, include_self=False):
     file_name = "%s_pred%s.pickle" % (method, "_include_self" if include_self else "")
-    with open(os.path.join(args.save_dir, file_name), "rb") as f:
+    with open(os.path.join(args.result_dir, file_name), "rb") as f:
         pred_list = pickle.load(f)
 
     return np.array(pred_list).astype(int)
@@ -47,13 +45,13 @@ def vote(single_model_pred_list, ground_true, weights=[0.5, 0.5]):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", type=str, default="../../Dataset/shopee-product-matching/split_data")
-    parser.add_argument("--save_dir", type=str, default="../../tmp/shopee/")
+    parser.add_argument("--data_dir", type=str, default="../")
+    parser.add_argument("--result_dir", type=str, default="../../tmp/shopee/")
 
     args = parser.parse_args()
 
-    weights = [0.55, 0.45]
-    print(weights)
+    weights = [0.5, 0.5]
+    # print(weights)
     print("Vote [include self]")
     ground_true = load_ground_true(args, include_self=True)
     pred_list = []

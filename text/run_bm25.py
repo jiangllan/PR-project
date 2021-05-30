@@ -125,7 +125,7 @@ if __name__ == '__main__':
         corpus_label_list = test['label_group'].to_numpy()
 
         # evaluate
-        print("=" * 9, "Evaluation", "=" * 9)
+        print("=" * 9, " Evaluation ", "=" * 9)
         mAP, mrr, F1 = evaluate(query_list, label_list, bm25_model, corpus_label_list, args)
         print("F1: {:.4f} mAP@10: {:.4f} MRR: {:.4f}".format(F1, mAP, mrr))
 
@@ -133,4 +133,4 @@ if __name__ == '__main__':
             total_result = np.array([F1, mAP, mrr])
             save_result = np.append(["F1", "mAP@10", "MRR"], total_result, axis=0)
             file_name = "bm25-%s.txt" % str(args.threshold)
-            np.savetxt(os.path.join(args.save_dir, file_name), save_result, fmt='%s', delimiter=',')
+            np.savetxt(os.path.join(args.result_dir, file_name), save_result, fmt='%s', delimiter=',')
