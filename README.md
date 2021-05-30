@@ -8,10 +8,15 @@
   - `ext_features.py`：抽取文本特征并存储
   - `run_bm25.py`：BM25模型训练及测试
   - `run_pca.py`：PCA模型训练及测试
-  - `run_bert.py：BERT模型训练及测试`
+  - `run_bert.py`：BERT模型训练及测试
   - `run_ensemble.py`：Ensemble方法实现及测试
   - `visualization.ipynb：可视化相关代码`
 - `image`文件夹中为仅使用图像信息进行检索的相关方法代码
+  - `triplet_learning.py`：抽取文本特征并存储
+  - `knn.py`：kNN模型训练及测试
+  - `pca.py`：PCA模型训练及测试
+  - `run_ensemble.py`：Ensemble方法实现及测试
+  - `analysis.py`：分析和可视化相关代码
 - `multimodal`文件夹中为使用混合信息进行检索的相关代码
   - `run_pca.py`：PCA模型训练及测试
   - `run_ensemble.py`：Ensemble方法实现及测试
@@ -138,8 +143,6 @@ cd text/
      --do_eval
    ```
 
-   
-
 2. PCA模型
 
    ```python
@@ -159,8 +162,6 @@ cd text/
        --threshold 0.7 \
        --do_eval
    ```
-
-   
 
 3. BERT模型
 
@@ -183,7 +184,6 @@ cd text/
        --do_eval
    ```
 
-   
 
 #### 最优模型结果复现
 
@@ -236,31 +236,130 @@ python ext_features.py --model_name distilbert-base-indonesian
    F1: 0.5781 mAP@10: 0.7200 MRR: 0.7250
    ```
 
-   
 
 ### 基于图像信息的检索模型
 
-### 基于混合信息的检索模型
+```shell
+cd image/
+```
 
-#### 模型训练及保存
+#### 数据预处理
+1. 获取降采样64x64的原始图像，[下载链接](https://cloud.tsinghua.edu.cn/d/8422f7f54c724139bd48/)，请放入 ../data/split_data/
 
-1. PCA模型
+    ```python
+    python get_feature.py \
+       --img_dir ../data/ \   
+       --cache_dir ../data/split_data/
+   ```
+   
+2. 获取ResNet-50预训练模型的特征，[下载链接](https://cloud.tsinghua.edu.cn/d/e7dd6171a6fa4de7831d/)，请放入 ../data/split_data/
+   
+    ```python
+   python get_feature.py \
+       --get_feature \
+       --model_name resnet50 \
+       --img_dir ../data/ \
+       --cache_dir ../data/split_data/
+   ```
+
+#### 模型加载及测试
+
+1. PCA方法：需要预先提取降采样64x64的原始图像
 
    ```python
+   python pca.py \
+       --image_size 64 \
+       --f1_threshold 0.95 \
+       --mAP_threshold 0.95 \
+       --cache_dir ../data/split_data/ \
+       --log_dir ../log/image-only/pca/
+   ```
+   
+    如果要在计算结果的舍去其本身，请加上`--drop_itself`
+   
+   ```python
+   python pca.py \
+       --image_size 64 \
+       --f1_threshold 0.95 \
+       --mAP_threshold 0.95 \
+       --cache_dir ../data/split_data/ \
+       --log_dir ../log/image-only/pca/ \
+       --drop_itself
+   ```
+   
+2. kNN方法：
+
+   ```python
+   python knn.py \
+       --model_name resnet50 \
+       --distance manhattan \
+       --cache_dir ../data/split_data/ \
+       --log_dir ../log/image-only/knn/ \
+       --only_image
+   ```
+   
+   如果要在计算结果的舍去其本身，请加上`--drop_itself`
+   
+   ```python
+   python knn.py \
+       --model_name resnet50 \
+       --distance manhattan \
+       --cache_dir ../data/split_data/ \
+       --log_dir ../log/image-only/knn/ \
+       --only_image \
+       --drop_itself
+   ```
+
+3. Triplet Learning方法，[下载链接](https://cloud.tsinghua.edu.cn/f/e7c9e19d9ac84fac99aa/?dl=1)，请放在 ../data 下
+
+   ```python
+   python triplet_learning.py \
+       --model_name densenet201 \
+       --resume ../data/best_triplet_d201.pth \
+       --batch_size 32 \
+       --data_dir ../data/ \
+       --log_dir ../log/image-only/triplet/ \
+       --test \
+       --print_freq 5
+   ```
+
+#### 深度模型训练
+
+   ```python
+   python triplet_learning.py \
+       --model_name densenet201 \
+       --resume ../data/best_triplet_d201.pth \
+       --batch_size 256 \
+       --epoch 50 \
+       --lr 1e-4 \
+       --lr_type cosine \
+       --data_dir ../data/ \
+       --log_dir ../log/image-only/triplet/ \
+       --print_freq 5
+   ```
+
+### 基于混合信息的检索模型
+
+1. kNN模型。图像特征[下载链接](https://cloud.tsinghua.edu.cn/d/e7dd6171a6fa4de7831d/)，下载并放在 ../data/split_data/ 下。；文本特征[下载链接](https://cloud.tsinghua.edu.cn/f/1fbc18dedc3d4f75b046/?dl=1)，下载并解压在 ../data/ 下。
+   
+   ```python
+   python knn.py \
+       --model_name resnet50 \
+       --distance manhattan \
+       --cache_dir ../data/split_data/ \
+       --log_dir ../log/image-text/knn/
+   ```
+
+2. PCA模型。特征获取同kNN。
+
+   ```python
+   # 模型训练
    python run_pca.py \
      --data_dir ../data/split_data \
      --result_dir ../result/ensemble \
      --n_components 200 \
      --do_train 
-   ```
-
-2. kNN模型
-
-#### 模型加载及测试
-
-1. PCA模型
-
-   ```python
+   
    # 目标包含自身且使用白化
    python run_pca.py \
      --data_dir ../data/split_data \
@@ -277,10 +376,6 @@ python ext_features.py --model_name distilbert-base-indonesian
        --threshold 0.7 \
        --do_eval
    ```
-
-   
-
-2. kNN模型
 
 #### 最优结果复现
 
@@ -306,10 +401,3 @@ python ext_features.py --model_name distilbert-base-indonesian
    Vote [exclude self]
    F1: 0.6372
    ```
-
-   
-
-
-
-
-
